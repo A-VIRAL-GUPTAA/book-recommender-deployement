@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Recommender</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for aesthetic appeal */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fc;
+        }
+        .nav-link {
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .nav-link.active {
+            border-bottom: 2px solid #3b82f6; /* Blue-500 */
+            color: #3b82f6;
+        }
+        .book-card {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease-in-out;
+        }
+        .book-card:hover {
+            transform: translateY(-4px);
+        }
+        /* Custom scrollbar for the book list */
+        .book-list-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .book-list-container::-webkit-scrollbar-thumb {
+            background-color: #d1d5db; /* Gray-300 */
+            border-radius: 10px;
+        }
+        .book-cover {
+            width: 80px;
+            height: 120px;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Header & Navigation -->
+    <header class="bg-white shadow-md sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0 text-xl font-bold text-gray-800">
+                    <span class="text-blue-600">Recommender</span> App
+                </div>
+                <nav class="flex space-x-6">
+                    <a id="nav-home" class="nav-link text-gray-500 hover:text-blue-600 active" onclick="navigate('home')">Top 50 Popular</a>
+                    <a id="nav-recommend" class="nav-link text-gray-500 hover:text-blue-600" onclick="navigate('recommend')">Get Recommendation</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+
+        <!-- Home Page (Top 50) -->
+        <section id="home-page" class="view">
+            <h2 class="text-3xl font-extrabold text-gray-900 mb-8 border-b pb-2">
+                Top 50 Most Popular Books
+            </h2>
+            <div id="top-50-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 book-list-container">
+                <!-- Books will be inserted here by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Recommendation Page -->
+        <section id="recommendation-page" class="view hidden">
+            <h2 class="text-3xl font-extrabold text-gray-900 mb-8 border-b pb-2">
+                Find Your Next Read
+            </h2>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg mb-10 max-w-2xl mx-auto">
+                <label for="book-select" class="block text-lg font-medium text-gray-700 mb-3">
+                    Select a book you liked:
+                </label>
+                <select id="book-select" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm transition">
+                    <option value="" disabled selected>Start typing or select a book...</option>
+                    <!-- Book options will be inserted here by JavaScript -->
+                </select>
+
+                <button onclick="getRecommendation()" class="mt-6 w-full px-4 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition duration-150 ease-in-out shadow-md">
+                    Recommend 5 Books
+                </button>
+            </div>
+
+            <!-- Results Section -->
+            <div id="recommendation-results" class="mt-8 max-w-2xl mx-auto">
+                <h3 class="text-2xl font-semibold text-gray-800 mb-4 border-b pb-1 hidden" id="results-heading">
+                    Recommendations for You:
+                </h3>
+                <div id="results-list" class="space-y-4">
+                    <!-- Results will appear here -->
+                </div>
+                <div id="message-box" class="hidden p-4 bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-lg">
+                    Please select a book to get recommendations.
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // =====================================================================
+        // Data Simulation (REPLACE WITH REAL DATA IN PYTHON ENVIRONMENT)
+        // Image URLs are now simpler placeholders for reliability.
+        // =====================================================================
+
+        const BASE_PLACEHOLDER_URL = 'https://placehold.co/80x120/';
+
+        const MOCK_TOP_50_BOOKS = [
+            { 'Book-Title': 'Harry Potter and the Sorcerer\'s Stone (Book 1)', 'Book-Author': 'J.K. Rowling', 'Image-URL-M': BASE_PLACEHOLDER_URL + '4f46e5/ffffff?text=HP1', 'Num-Ratings': 1200, 'Avg-Rating': 4.55 },
+            { 'Book-Title': 'The Da Vinci Code', 'Book-Author': 'Dan Brown', 'Image-URL-M': BASE_PLACEHOLDER_URL + 'ef4444/ffffff?text=DVC', 'Num-Ratings': 980, 'Avg-Rating': 4.12 },
+            { 'Book-Title': 'To Kill a Mockingbird', 'Book-Author': 'Harper Lee', 'Image-URL-M': BASE_PLACEHOLDER_URL + '10b981/ffffff?text=TKAM', 'Num-Ratings': 1500, 'Avg-Rating': 4.70 },
+            { 'Book-Title': 'The Lord of the Rings: The Fellowship of the Ring', 'Book-Author': 'J.R.R. Tolkien', 'Image-URL-M': BASE_PLACEHOLDER_URL + '3b82f6/ffffff?text=LOTR1', 'Num-Ratings': 1100, 'Avg-Rating': 4.60 },
+            { 'Book-Title': '1984', 'Book-Author': 'George Orwell', 'Image-URL-M': BASE_PLACEHOLDER_URL + '6366f1/ffffff?text=1984', 'Num-Ratings': 950, 'Avg-Rating': 4.35 },
+            { 'Book-Title': 'Harry Potter and the Prisoner of Azkaban (Book 3)', 'Book-Author': 'J.K. Rowling', 'Image-URL-M': BASE_PLACEHOLDER_URL + '4f46e5/ffffff?text=HP3', 'Num-Ratings': 1150, 'Avg-Rating': 4.61 },
+            { 'Book-Title': 'The Lovely Bones: A Novel', 'Book-Author': 'Alice Sebold', 'Image-URL-M': BASE_PLACEHOLDER_URL + 'f97316/ffffff?text=LB', 'Num-Ratings': 850, 'Avg-Rating': 4.01 },
+            { 'Book-Title': 'The Catcher in the Rye', 'Book-Author': 'J.D. Salinger', 'Image-URL-M': BASE_PLACEHOLDER_URL + '065f46/ffffff?text=CR', 'Num-Ratings': 750, 'Avg-Rating': 3.98 },
+            { 'Book-Title': 'The Great Gatsby', 'Book-Author': 'F. Scott Fitzgerald', 'Image-URL-M': BASE_PLACEHOLDER_URL + '0891b2/ffffff?text=GG', 'Num-Ratings': 1050, 'Avg-Rating': 4.15 },
+            { 'Book-Title': 'The Secret Life of Bees', 'Book-Author': 'Sue Monk Kidd', 'Image-URL-M': BASE_PLACEHOLDER_URL + 'db2777/ffffff?text=SLB', 'Num-Ratings': 680, 'Avg-Rating': 4.05 },
+            { 'Book-Title': 'The Five People You Meet in Heaven', 'Book-Author': 'Mitch Albom', 'Image-URL-M': BASE_PLACEHOLDER_URL + '5b21b6/ffffff?text=5+People', 'Num-Ratings': 900, 'Avg-Rating': 4.20 },
+            { 'Book-Title': 'Angels &amp; Demons', 'Book-Author': 'Dan Brown', 'Image-URL-M': BASE_PLACEHOLDER_URL + 'ef4444/ffffff?text=AD', 'Num-Ratings': 800, 'Avg-Rating': 4.08 },
+            { 'Book-Title': 'The Kite Runner', 'Book-Author': 'Khaled Hosseini', 'Image-URL-M': BASE_PLACEHOLDER_URL + '14b8a6/ffffff?text=KR', 'Num-Ratings': 1300, 'Avg-Rating': 4.45 },
+            { 'Book-Title': 'Pride and Prejudice', 'Book-Author': 'Jane Austen', 'Image-URL-M': BASE_PLACEHOLDER_URL + 'f59e0b/ffffff?text=PAP', 'Num-Ratings': 920, 'Avg-Rating': 4.28 },
+            { 'Book-Title': 'The Hitchhiker\'s Guide to the Galaxy', 'Book-Author': 'Douglas Adams', 'Image-URL-M': BASE_PLACEHOLDER_URL + '4c0519/ffffff?text=HHGG', 'Num-Ratings': 780, 'Avg-Rating': 4.30 },
+            { 'Book-Title': 'Life of Pi', 'Book-Author': 'Yann Martel', 'Image-URL-M': BASE_PLACEHOLDER_URL + '0f766e/ffffff?text=LOP', 'Num-Ratings': 700, 'Avg-Rating': 3.95 },
+            { 'Book-Title': 'Wuthering Heights', 'Book-Author': 'Emily Brontë', 'Image-URL-M': BASE_PLACEHOLDER_URL + '78716c/ffffff?text=WH', 'Num-Ratings': 600, 'Avg-Rating': 4.05 },
+            { 'Book-Title': 'A Thousand Splendid Suns', 'Book-Author': 'Khaled Hosseini', 'Image-URL-M': BASE_PLACEHOLDER_URL + '14b8a6/ffffff?text=ATSS', 'Num-Ratings': 1020, 'Avg-Rating': 4.40 },
+            { 'Book-Title': 'The Girl with the Dragon Tattoo', 'Book-Author': 'Stieg Larsson', 'Image-URL-M': BASE_PLACEHOLDER_URL + '334155/ffffff?text=GWDT', 'Num-Ratings': 880, 'Avg-Rating': 4.18 },
+            { 'Book-Title': 'Middlesex', 'Book-Author': 'Jeffrey Eugenides', 'Image-URL-M': BASE_PLACEHOLDER_URL + '0e7490/ffffff?text=MDX', 'Num-Ratings': 550, 'Avg-Rating': 3.85 },
+            { 'Book-Title': 'The Blind Assassin', 'Book-Author': 'Margaret Atwood', 'Image-URL-M': BASE_PLACEHOLDER_URL + 'be123c/ffffff?text=BA', 'Num-Ratings': 450, 'Avg-Rating': 3.90 },
+            { 'Book-Title': 'Neverwhere', 'Book-Author': 'Neil Gaiman', 'Image-URL-M': BASE_PLACEHOLDER_URL + '7e22ce/ffffff?text=NW', 'Num-Ratings': 720, 'Avg-Rating': 4.25 },
+            { 'Book-Title': 'The Giver', 'Book-Author': 'Lois Lowry', 'Image-URL-M': BASE_PLACEHOLDER_URL + '22c55e/ffffff?text=TG', 'Num-Ratings': 650, 'Avg-Rating': 4.10 },
+            { 'Book-Title': 'Where the Sidewalk Ends', 'Book-Author': 'Shel Silverstein', 'Image-URL-M': BASE_PLACEHOLDER_URL + 'facc15/ffffff?text=WSE', 'Num-Ratings': 820, 'Avg-Rating': 4.50 },
+            { 'Book-Title': 'The Red Tent', 'Book-Author': 'Anita Diamant', 'Image-URL-M': BASE_PLACEHOLDER_URL + 'dc2626/ffffff?text=TRT', 'Num-Ratings': 580, 'Avg-Rating': 3.80 },
+            { 'Book-Title': 'The Little Prince', 'Book-Author': 'Antoine de Saint-Exupéry', 'Image-URL-M': BASE_PLACEHOLDER_URL + '374151/ffffff?text=LP', 'Num-Ratings': 1400, 'Avg-Rating': 4.65 },
+            { 'Book-Title': 'Brave New World', 'Book-Author': 'Aldous Huxley', 'Image-URL-M': BASE_PLACEHOLDER_URL + '6b21a8/ffffff?text=BNW', 'Num-Ratings': 710, 'Avg-Rating': 4.03 },
+            { 'Book-Title': 'Of Mice and Men', 'Book-Author': 'John Steinbeck', 'Image-URL-M': BASE_PLACEHOLDER_URL + '1e40af/ffffff?text=OMAM', 'Num-Ratings': 640, 'Avg-Rating': 4.22 },
+            { 'Book-Title': 'Gone with the Wind', 'Book-Author': 'Margaret Mitchell', 'Image-URL-M': BASE_PLACEHOLDER_URL + '84cc16/ffffff?text=GWW', 'Num-Ratings': 500, 'Avg-Rating': 3.75 },
+            { 'Book-Title': 'Fahrenheit 451', 'Book-Author': 'Ray Bradbury', 'Image-URL-M': BASE_PLACEHOLDER_URL + '333333/ffffff?text=F451', 'Num-Ratings': 770, 'Avg-Rating': 4.19 },
+            { 'Book-Title': 'Animal Farm', 'Book-Author': 'George Orwell', 'Image-URL-M': BASE_PLACEHOLDER_URL + '6366f1/ffffff?text=AF', 'Num-Ratings': 890, 'Avg-Rating': 4.38 },
+            { 'Book-Title': 'The Silence of the Lambs', 'Book-Author': 'Thomas Harris', 'Image-URL-M': BASE_PLACEHOLDER_URL + '1f2937/ffffff?text=SOTL', 'Num-Ratings': 620, 'Avg-Rating': 4.09 },
+            { 'Book-Title': 'The Road', 'Book-Author': 'Cormac McCarthy', 'Image-URL-M': BASE_PLACEHOLDER_URL + '44403c/ffffff?text=Road', 'Num-Ratings': 480, 'Avg-Rating': 3.99 },
+            { 'Book-Title': 'One Hundred Years of Solitude', 'Book-Author': 'Gabriel García Márquez', 'Image-URL-M': BASE_PLACEHOLDER_URL + 'ca8a04/ffffff?text=OHYOS', 'Num-Ratings': 730, 'Avg-Rating': 4.24 },
+            { 'Book-Title': 'The Handmaid\'s Tale', 'Book-Author': 'Margaret Atwood', 'Image-URL-M': BASE_PLACEHOLDER_URL + 'be123c/ffffff?text=HT', 'Num-Ratings': 910, 'Avg-Rating': 4.31 },
+            { 'Book-Title': 'Catch-22', 'Book-Author': 'Joseph Heller', 'Image-URL-M': BASE_PLACEHOLDER_URL + '14532d/ffffff?text=C22', 'Num-Ratings': 690, 'Avg-Rating': 4.07 },
+            { 'Book-Title': 'Memoirs of a Geisha', 'Book-Author': 'Arthur Golden', 'Image-URL-M': BASE_PLACEHOLDER_URL + '9d174d/ffffff?text=MAG', 'Num-Ratings': 810, 'Avg-Rating': 4.14 },
+            { 'Book-Title': 'The Godfather', 'Book-Author': 'Mario Puzo', 'Image-URL-M': BASE_PLACEHOLDER_URL + '3f3f46/ffffff?text=GF', 'Num-Ratings': 760, 'Avg-Rating': 4.27 },
+            { 'Book-Title': 'Atlas Shrugged', 'Book-Author': 'Ayn Rand', 'Image-URL-M': BASE_PLACEHOLDER_URL + '44403c/ffffff?text=AS', 'Num-Ratings': 540, 'Avg-Rating': 3.78 },
+            { 'Book-Title': 'Perfume: The Story of a Murderer', 'Book-Author': 'Patrick Süskind', 'Image-URL-M': BASE_PLACEHOLDER_URL + '701a75/ffffff?text=Perfume', 'Num-Ratings': 490, 'Avg-Rating': 4.11 },
+            { 'Book-Title': 'The Secret History', 'Book-Author': 'Donna Tartt', 'Image-URL-M': BASE_PLACEHOLDER_URL + '525252/ffffff?text=SH', 'Num-Ratings': 590, 'Avg-Rating': 4.02 },
+            { 'Book-Title': 'The Time Traveler\'s Wife', 'Book-Author': 'Audrey Niffenegger', 'Image-URL-M': BASE_PLACEHOLDER_URL + 'fb923c/ffffff?text=TTW', 'Num-Ratings': 840, 'Avg-Rating': 4.16 },
+            { 'Book-Title': 'Pillars of the Earth', 'Book-Author': 'Ken Follett', 'Image-URL-M': BASE_PLACEHOLDER_URL + '4338ca/ffffff?text=POE', 'Num-Ratings': 660, 'Avg-Rating': 4.33 },
+            { 'Book-Title': 'The Name of the Rose', 'Book-Author': 'Umberto Eco', 'Image-URL-M': BASE_PLACEHOLDER_URL + '57534e/ffffff?text=NOTR', 'Num-Ratings': 400, 'Avg-Rating': 4.00 },
+            { 'Book-Title': 'A Scanner Darkly', 'Book-Author': 'Philip K. Dick', 'Image-URL-M': BASE_PLACEHOLDER_URL + '1e3a8a/ffffff?text=ASD', 'Num-Ratings': 380, 'Avg-Rating': 4.04 },
+            { 'Book-Title': 'The Pelican Brief', 'Book-Author': 'John Grisham', 'Image-URL-M': BASE_PLACEHOLDER_URL + '059669/ffffff?text=PB', 'Num-Ratings': 670, 'Avg-Rating': 3.92 },
+            { 'Book-Title': 'Where the Heart Is', 'Book-Author': 'Billie Letts', 'Image-URL-M': BASE_PLACEHOLDER_URL + 'ef4444/ffffff?text=WHI', 'Num-Ratings': 740, 'Avg-Rating': 4.17 },
+            { 'Book-Title': 'Divine Secrets of the Ya-Ya Sisterhood', 'Book-Author': 'Rebecca Wells', 'Image-URL-M': BASE_PLACEHOLDER_URL + 'a16207/ffffff?text=DSYY', 'Num-Ratings': 630, 'Avg-Rating': 3.97 },
+            { 'Book-Title': 'The Shell Seekers', 'Book-Author': 'Rosamunde Pilcher', 'Image-URL-M': BASE_PLACEHOLDER_URL + 'f43f5e/ffffff?text=TSS', 'Num-Ratings': 430, 'Avg-Rating': 3.70 },
+            { 'Book-Title': 'Prodigal Summer: A Novel', 'Book-Author': 'Barbara Kingsolver', 'Image-URL-M': BASE_PLACEHOLDER_URL + '059669/ffffff?text=PS', 'Num-Ratings': 560, 'Avg-Rating': 4.06 },
+            { 'Book-Title': 'Harry Potter and the Chamber of Secrets (Book 2)', 'Book-Author': 'J.K. Rowling', 'Image-URL-M': BASE_PLACEHOLDER_URL + '4f46e5/ffffff?text=HP2', 'Num-Ratings': 1050, 'Avg-Rating': 4.58 },
+            { 'Book-Title': 'Chocolat', 'Book-Author': 'Joanne Harris', 'Image-URL-M': BASE_PLACEHOLDER_URL + 'a1a1aa/ffffff?text=Choco', 'Num-Ratings': 510, 'Avg-Rating': 3.95 },
+            { 'Book-Title': 'The Color Purple', 'Book-Author': 'Alice Walker', 'Image-URL-M': BASE_PLACEHOLDER_URL + '7c3aed/ffffff?text=CP', 'Num-Ratings': 800, 'Avg-Rating': 4.30 },
+            { 'Book-Title': 'One Flew Over the Cuckoo\'s Nest', 'Book-Author': 'Ken Kesey', 'Image-URL-M': BASE_PLACEHOLDER_URL + 'ca8a04/ffffff?text=OFOTCN', 'Num-Ratings': 700, 'Avg-Rating': 4.20 },
+            { 'Book-Title': 'The Secret Garden', 'Book-Author': 'Frances Hodgson Burnett', 'Image-URL-M': BASE_PLACEHOLDER_URL + '0f766e/ffffff?text=SG', 'Num-Ratings': 650, 'Avg-Rating': 4.40 },
+            { 'Book-Title': 'The Grapes of Wrath', 'Book-Author': 'John Steinbeck', 'Image-URL-M': BASE_PLACEHOLDER_URL + '1e40af/ffffff?text=GOW', 'Num-Ratings': 580, 'Avg-Rating': 4.10 },
+            { 'Book-Title': 'Rebecca', 'Book-Author': 'Daphne Du Maurier', 'Image-URL-M': BASE_PLACEHOLDER_URL + '525252/ffffff?text=Rebecca', 'Num-Ratings': 450, 'Avg-Rating': 4.05 },
+            { 'Book-Title': 'The Woman in White', 'Book-Author': 'Wilkie Collins', 'Image-URL-M': BASE_PLACEHOLDER_URL + '334155/ffffff?text=WIW', 'Num-Ratings': 390, 'Avg-Rating': 3.95 },
+            { 'Book-Title': 'The Stranger (L\'Etranger)', 'Book-Author': 'Albert Camus', 'Image-URL-M': BASE_PLACEHOLDER_URL + '3f3f46/ffffff?text=Stranger', 'Num-Ratings': 620, 'Avg-Rating': 4.15 },
+            { 'Book-Title': 'Frankenstein', 'Book-Author': 'Mary Shelley', 'Image-URL-M': BASE_PLACEHOLDER_URL + 'be123c/ffffff?text=Frank', 'Num-Ratings': 730, 'Avg-Rating': 4.35 },
+            { 'Book-Title': 'A Confederacy of Dunces', 'Book-Author': 'John Kennedy Toole', 'Image-URL-M': BASE_PLACEHOLDER_URL + 'dc2626/ffffff?text=Confed', 'Num-Ratings': 590, 'Avg-Rating': 4.28 },
+            { 'Book-Title': 'The Secret History (The Unabridged Edition)', 'Book-Author': 'Donna Tartt', 'Image-URL-M': BASE_PLACEHOLDER_URL + '525252/ffffff?text=SH+Unab', 'Num-Ratings': 510, 'Avg-Rating': 4.10 }
+        ];
+
+        const MOCK_ALL_BOOKS_LIST = MOCK_TOP_50_BOOKS.map(book => book['Book-Title']).concat([
+            'The Green Mile', 'Digital Fortress', 'The Testament'
+        ]);
+
+        /**
+         * Mock function to simulate the recommendation logic from the model.
+         * In deployment, this would be an API call to your Python back end.
+         * @param {string} bookTitle - The title of the book selected by the user.
+         * @returns {string[]} - An array of 5 recommended book titles.
+         */
+        function getModelRecommendations(bookTitle) {
+            const allRecs = [
+                'The Hobbit : The Enchanting Prelude to The Lord of the Rings',
+                'The Two Towers (The Lord of the Rings, Part 2)',
+                'The Return of the King (The Lord of the Rings, Part 3)',
+                'A Wizard of Earthsea',
+                'The Name of the Wind',
+                'Catch-22',
+                'Brave New World',
+                'Animal Farm',
+                'Fahrenheit 451',
+                'The Handmaid\'s Tale'
+            ];
+
+            // Simple hash for pseudo-random results
+            const bookIndex = MOCK_ALL_BOOKS_LIST.indexOf(bookTitle);
+            const start = bookIndex > -1 ? bookIndex % 5 : 0;
+            const recommendations = allRecs.slice(start, start + 5);
+
+            if (MOCK_ALL_BOOKS_LIST.includes(bookTitle)) {
+                return recommendations.length === 5 ? recommendations : allRecs.slice(0, 5);
+            }
+            return ["No direct recommendations found in mock data. Try a popular book."];
+        }
+
+        // =====================================================================
+        // UI Rendering and Logic
+        // =====================================================================
+
+        let currentView = 'home';
+
+        /**
+         * Initializes the application by loading the book lists and setting up the UI.
+         */
+        window.onload = function() {
+            renderTop50Books(MOCK_TOP_50_BOOKS);
+            populateBookDropdown(MOCK_ALL_BOOKS_LIST);
+            navigate('home'); // Ensure we start on the home page
+        };
+
+        /**
+         * Renders the list of popular books on the Home Page.
+         * @param {Array<Object>} books - Array of book objects.
+         */
+        function renderTop50Books(books) {
+            const container = document.getElementById('top-50-list');
+            container.innerHTML = ''; // Clear existing content
+
+            if (!books || books.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 col-span-4">No popular books found.</p>';
+                return;
+            }
+
+            books.slice(0, 50).forEach((book, index) => {
+                const card = `
+                    <div class="book-card bg-white rounded-xl overflow-hidden p-4 flex space-x-4">
+                        <!-- Book Cover Image: Uses the Image-URL-M field -->
+                        <img src="${book['Image-URL-M']}" alt="${book['Book-Title']}"
+                             onerror="this.onerror=null; this.src='https://placehold.co/80x120/e5e7eb/4b5563?text=Cover+Not+Found';"
+                             class="book-cover object-cover rounded-md flex-shrink-0" />
+
+                        <div class="flex flex-col justify-between">
+                            <div>
+                                <p class="text-xs font-bold text-blue-600 mb-1">#${index + 1} Popular</p>
+                                <h4 class="text-sm font-semibold text-gray-900 line-clamp-2">${book['Book-Title']}</h4>
+                                <p class="text-xs text-gray-500 mt-1">by ${book['Book-Author']}</p>
+                            </div>
+                            <div class="mt-2 flex items-center text-xs">
+                                <span class="text-yellow-500 mr-1">★</span>
+                                <span class="font-medium text-gray-800">${book['Avg-Rating'] ? book['Avg-Rating'].toFixed(2) : 'N/A'}</span>
+                                <span class="text-gray-400 ml-2">(${book['Num-Ratings'] ? book['Num-Ratings'].toLocaleString() : '0'} ratings)</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += card;
+            });
+        }
+
+        /**
+         * Populates the <select> element with all available book titles.
+         * @param {string[]} books - Array of all book titles.
+         */
+        function populateBookDropdown(books) {
+            const select = document.getElementById('book-select');
+            books.forEach(title => {
+                const option = document.createElement('option');
+                option.value = title;
+                option.textContent = title;
+                select.appendChild(option);
+            });
+        }
+
+        /**
+         * Handles the click event on the "Recommend" button.
+         */
+        function getRecommendation() {
+            const selectedBook = document.getElementById('book-select').value;
+            const resultsList = document.getElementById('results-list');
+            const resultsHeading = document.getElementById('results-heading');
+            const messageBox = document.getElementById('message-box');
+
+            resultsList.innerHTML = '';
+            resultsHeading.classList.add('hidden');
+            messageBox.classList.add('hidden');
+
+            if (!selectedBook) {
+                messageBox.textContent = 'Please select a book from the list.';
+                messageBox.classList.remove('hidden');
+                return;
+            }
+
+            // Show loading state (optional but good practice)
+            resultsList.innerHTML = '<div class="text-center text-gray-500 p-8"><svg class="animate-spin h-5 w-5 mr-3 inline text-blue-500" viewBox="0 0 24 24"></svg> Calculating recommendations...</div>';
+
+            // ----------------------------------------------------
+            // CALL THE MOCK LOGIC (simulating API call/Python function)
+            // ----------------------------------------------------
+            setTimeout(() => {
+                const recommendations = getModelRecommendations(selectedBook);
+                resultsList.innerHTML = ''; // Clear loading state
+
+                resultsHeading.textContent = `Recommendations for: ${selectedBook}`;
+                resultsHeading.classList.remove('hidden');
+
+                if (recommendations && recommendations.length > 0 && recommendations[0] !== "No direct recommendations found in mock data. Try a popular book.") {
+                    recommendations.slice(0, 5).forEach((rec, index) => {
+                        resultsList.innerHTML += `
+                            <div class="bg-blue-50 p-4 border-l-4 border-blue-500 rounded-lg flex items-center">
+                                <span class="text-xl font-bold text-blue-600 mr-4 w-6">${index + 1}.</span>
+                                <span class="text-lg text-gray-800 font-medium">${rec}</span>
+                            </div>
+                        `;
+                    });
+                } else {
+                    resultsList.innerHTML = `
+                        <div class="p-4 bg-red-100 border border-red-300 text-red-800 rounded-lg">
+                            Sorry, we couldn't find good recommendations for that book. Try a more popular title.
+                        </div>
+                    `;
+                }
+            }, 500); // Simulate network delay
+        }
+
+        /**
+         * Simple function to switch between the two views/pages.
+         * @param {string} viewName - 'home' or 'recommend'.
+         */
+        function navigate(viewName) {
+            const views = document.querySelectorAll('.view');
+            const navLinks = document.querySelectorAll('.nav-link');
+
+            views.forEach(view => {
+                view.classList.add('hidden');
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+            });
+
+            if (viewName === 'home') {
+                document.getElementById('home-page').classList.remove('hidden');
+                document.getElementById('nav-home').classList.add('active');
+            } else if (viewName === 'recommend') {
+                document.getElementById('recommendation-page').classList.remove('hidden');
+                document.getElementById('nav-recommend').classList.add('active');
+            }
+            currentView = viewName;
+            window.scrollTo(0, 0); // Scroll to top on navigation
+        }
+
+    </script>
+</body>
+</html>
